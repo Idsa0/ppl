@@ -1,0 +1,16 @@
+#lang racket/base
+
+(define append
+    (lambda (l1 l2)
+    @todo
+))
+
+(define reverse
+    (lambda (l)
+    @todo
+))
+
+(define duplicate-items
+    (lambda (lst, dup-count)
+    @todo    
+))
