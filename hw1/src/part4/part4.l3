@@ -1,16 +1,66 @@
 #lang racket/base
 
+
+;; Signature: append(l1,l2)
+;;Type: [ List<T1>*List<T2> -> List<T1 | T2> ]
+;; Purpose: Concatenation l2 to l1 and maintain l1,l2 inside element's order.
+;; Pre-condition: none.
+;; Tests: (append '(1 2) '(3 4)) -> '(1 2 3 4); (append '() '(3 4)) -> '(3 4); (append '(1 2) '()) -> '(1 2); (append '(1 2) '(a b)) -> '(1 2 a b);
 (define append
     (lambda (l1 l2)
-    @todo
-))
+        (if (eq? l2 '())
+            l1
+            (if (eq? l1 '())
+                l2
+                (cons (car l1) (append (cdr l1) l2))
+            )
+        )
+    )
+)
 
+
+;; Signature: reverse(l)
+;;Type: [ List<T> -> List<T> ]
+;; Purpose: Reverse the order of the elements in the list.
+;; Pre-condition: none.
+;; Tests: (reverse '() -> '()); (reverse '(1 2)) -> '(2 1); (reverse '(4 3 2 1)) -> '(1 2 3 4);
 (define reverse
     (lambda (l)
-    @todo
-))
+        (if (eq? l '())
+            l
+            ( append (reverse (cdr l)) (cons (car l) '()) )
+        )
+    )
+)
 
+
+;; Signature: duplicate-items(lst, dup-count)
+;;Type: [ List<T>*List<Number> -> List<T> ]
+;; Purpose: Return new list that contains the multiplicity of the of lst elements, according to their match number in dup-count(dup-count is cyclic).
+;; Pre-condition: dup-count is a none empty list of numbers.
+;; Tests: (duplicate-items '(1 2) '(3 4)) -> '(1 1 1 2 2 2 2); (duplicate-items '() '(3 4)) -> '(); (duplicate-items '(1 2) '(2)) -> '(1 1 2 2); (append '(1 2) '(1 1 9 9)) -> '(1 2);
 (define duplicate-items
     (lambda (lst, dup-count)
-    @todo    
-))
+        (if (eq? lst '())
+            lst
+            (append (duplicate-n-times (car lst) (car dup-count)) 
+                    (duplicate-items (cdr lst) (append (cdr dup-count) (cons (car dup-count) '())))
+            )
+        ) 
+    )
+)
+
+
+;; Signature: duplicate-n-times(item, num)
+;;Type: [ <T>*Number -> List<T> ]
+;; Purpose: Return new list that contains the given item 'n' times.
+;; Pre-condition: none.
+;; Tests: (duplicate-n-times 2 3) -> '(2 2 2); (duplicate-items a 4) -> '(a a a a); (duplicate-items 1 0) -> '();
+(define duplicate-n-times
+    (lambda (item, num)
+        (if (eq? num 0)
+            '()
+            (cons item (duplicate-n-times item (- num 1)))
+        ) 
+    )
+)
