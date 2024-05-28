@@ -40,7 +40,7 @@
 ;; Pre-condition: dup-count is a none empty list of numbers.
 ;; Tests: (duplicate-items '(1 2) '(3 4)) -> '(1 1 1 2 2 2 2); (duplicate-items '() '(3 4)) -> '(); (duplicate-items '(1 2) '(2)) -> '(1 1 2 2); (append '(1 2) '(1 1 9 9)) -> '(1 2);
 (define duplicate-items
-    (lambda (lst, dup-count)
+    (lambda (lst dup-count)
         (if (eq? lst '())
             lst
             (append (duplicate-n-times (car lst) (car dup-count)) 
@@ -57,8 +57,8 @@
 ;; Pre-condition: none.
 ;; Tests: (duplicate-n-times 2 3) -> '(2 2 2); (duplicate-items a 4) -> '(a a a a); (duplicate-items 1 0) -> '();
 (define duplicate-n-times
-    (lambda (item, num)
-        (if (eq? num 0)
+    (lambda (item num)
+        (if (< num 1)
             '()
             (cons item (duplicate-n-times item (- num 1)))
         ) 
