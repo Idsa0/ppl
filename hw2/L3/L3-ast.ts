@@ -244,7 +244,7 @@ const parseClassExp = (fields: Sexp, methods: Sexp): Result<ClassExp> => {
     } else if (!isGoodBindings(methods)){
        return makeFailure(`Invalid methods for ClassExp ${format(methods)}`);
     }
-    const vars = map(first, methods);
+    const vars = map(b => b[0], methods);
     const valsResult = mapResult(parseL3CExp, map(second, methods));
     const bindingsResult = mapv(valsResult, (vals: CExp[]) => zipWith(makeBinding, vars, vals));
     return mapv (bindingsResult, (bindings: Binding[]) =>
@@ -327,6 +327,10 @@ const unparseProcExp = (pe: ProcExp): string =>
 const unparseLetExp = (le: LetExp) : string => 
     `(let (${map((b: Binding) => `(${b.var.var} ${unparseL3(b.val)})`, le.bindings).join(" ")}) ${unparseLExps(le.body)})`
 
+//L31
+const unparseClassExp = (ce: ClassExp): string =>
+    `(class (${map((p: VarDecl) => p.var, ce.fields).join(" ")}) (${map((b: Binding) => `(${b.var.var} ${unparseL3(b.val)})`, ce.methods).join(" ")}))`
+
 export const unparseL3 = (exp: Program | Exp): string =>
     isBoolExp(exp) ? valueToString(exp.val) :
     isNumExp(exp) ? valueToString(exp.val) :
@@ -338,6 +342,7 @@ export const unparseL3 = (exp: Program | Exp): string =>
     isAppExp(exp) ? `(${unparseL3(exp.rator)} ${unparseLExps(exp.rands)})` :
     isPrimOp(exp) ? exp.op :
     isLetExp(exp) ? unparseLetExp(exp) :
+    isClassExp(exp) ? unparseClassExp(exp) : // L31
     isDefineExp(exp) ? `(define ${exp.var.var} ${unparseL3(exp.val)})` :
     isProgram(exp) ? `(L3 ${unparseLExps(exp.exps)})` :
     exp;
