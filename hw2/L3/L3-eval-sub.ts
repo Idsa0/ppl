@@ -1,6 +1,6 @@
 // L3-eval.ts
 import { map } from "ramda";
-import { isCExp, isLetExp } from "./L3-ast";
+import { isCExp, isClassExp, isLetExp } from "./L3-ast";
 import { BoolExp, CExp, Exp, IfExp, LitExp, NumExp,
          PrimOp, ProcExp, Program, StrExp, VarDecl } from "./L3-ast";
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
@@ -30,6 +30,7 @@ const L3applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isLitExp(exp) ? makeOk(exp.val) :
     isIfExp(exp) ? evalIf(exp, env) :
     isProcExp(exp) ? evalProc(exp, env) :
+    isClassExp(exp) ? evalClass(exp, env): //L31
     isAppExp(exp) ? bind(L3applicativeEval(exp.rator, env), (rator: Value) =>
                         bind(mapResult(param => 
                             L3applicativeEval(param, env), 
@@ -49,6 +50,10 @@ const evalIf = (exp: IfExp, env: Env): Result<Value> =>
 
 const evalProc = (exp: ProcExp, env: Env): Result<Closure> =>
     makeOk(makeClosure(exp.args, exp.body));
+
+// TODO L31
+const evalClass = (exp: ClassExp, env: Env): Result<Class> =>
+    makeOk(makeClass(exp.fields, exp.methods));
 
 const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =>
     isPrimOp(proc) ? applyPrimitive(proc, args) :
