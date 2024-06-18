@@ -8,7 +8,7 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
 import { makeBoolExp, makeLitExp, makeNumExp, makeProcExp, makeStrExp } from "./L3-ast";
 import { parseL3Exp } from "./L3-ast";
 import { applyEnv, makeEmptyEnv, makeEnv, Env } from "./L3-env-sub";
-import { isClosure, makeClosure, Closure, Value, Class, makeClass } from "./L3-value";
+import { isClosure, makeClosure, Closure, Value, Class, makeClass, isObject, isClass, CObject } from "./L3-value";
 import { first, rest, isEmpty, List, isNonEmptyList } from '../shared/list';
 import { isBoolean, isNumber, isString } from "../shared/type-predicates";
 import { Result, makeOk, makeFailure, bind, mapResult, mapv } from "../shared/result";
@@ -57,6 +57,8 @@ const evalClass = (exp: ClassExp, env: Env): Result<Class> =>
 
 const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =>
     isPrimOp(proc) ? applyPrimitive(proc, args) :
+    isClass(proc) ? applyClass(proc, args, env) :
+    isObject(proc) ? applyObject(proc, args, env) :
     isClosure(proc) ? applyClosure(proc, args, env) :
     makeFailure(`Bad procedure ${format(proc)}`);
 
@@ -78,6 +80,20 @@ const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => 
     const litArgs : CExp[] = map(valueToLitExp, args);
     return evalSequence(substitute(body, vars, litArgs), env);
     //return evalSequence(substitute(proc.body, vars, litArgs), env);
+}
+
+// L31
+//TODO applyClass---->Result<Objt>
+export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => {
+    const vars = map((v: VarDecl) => v.var, cls.fields);
+    const body = cls.methods;
+    const litArgs : CExp[] = map(valueToLitExp, args);
+    return evalSequence(substitute(body, vars, litArgs), env);
+}
+
+//TODO applyObject---->Result<Value>
+export const applyObject = (obj: CObject, args: Value[], env: Env): Result<Value> => {
+    return makeOk(obj);
 }
 
 // Evaluate a sequence of expressions (in a program)

@@ -32,15 +32,28 @@ export type Class = {
     tag: "Class";
     fields: VarDecl[];
     methods: Binding[];
-    env: Env;
-}
+   // env: Env;
+} // TODO check if env is needed
 export const makeClass = (fields: VarDecl[], methods: Binding[]): Class =>
-    ({tag: "Class", fields: fields, methods: methods, env : makeEmptyEnv()});
+    //({tag: "Class", fields: fields, methods: methods, env : makeEmptyEnv()});
+    ({tag: "Class", fields: fields, methods: methods});   
 
-export const makeClassEnv = (fields: VarDecl[], methods: Binding[], env: Env): Class =>
-    ({tag: "Class", fields: fields, methods: methods, env: env});
+// export const makeClassEnv = (fields: VarDecl[], methods: Binding[], env: Env): Class =>
+//     ({tag: "Class", fields: fields, methods: methods, env: env});
 
 export const isClass = (x: any): x is Class => x.tag === "Class";
+
+export type CObject = {
+    tag: "CObject";
+    fields: Value[];
+    funcNames: string[];
+    closures: Closure[];
+}
+
+export const makeObject = (fields: Value[], funcNames: string[] , closures: Closure[]): CObject =>
+    ({tag: "CObject", fields: fields, funcNames: funcNames , closures: closures});
+
+export const isObject = (x: any): x is CObject => x.tag === "CObject";
 
 // ========================================================
 // SExp
@@ -57,7 +70,7 @@ export type SymbolSExp = {
     val: string;
 }
 
-export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | Class;
+export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | Class | CObject;
 export const isSExp = (x: any): x is SExpValue =>
     typeof(x) === 'string' || typeof(x) === 'boolean' || typeof(x) === 'number' ||
     isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x) || isClass(x);
@@ -98,6 +111,7 @@ export const valueToString = (val: Value): string =>
     isString(val) ? `"${val}"` :
     isClosure(val) ? closureToString(val) :
     isClass(val) ? `Class` ://TODO
+    isObject(val) ? `Object` ://TODO
     isPrimOp(val) ? val.op :
     isSymbolSExp(val) ? val.val :
     isEmptySExp(val) ? "'()" :
