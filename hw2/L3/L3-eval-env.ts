@@ -5,9 +5,11 @@ import { map } from "ramda";
 import { isBoolExp, isCExp, isLitExp, isNumExp, isPrimOp, isStrExp, isVarRef,
          isAppExp, isDefineExp, isIfExp, isLetExp, isProcExp,
          Binding, VarDecl, CExp, Exp, IfExp, LetExp, ProcExp, Program,
-         parseL3Exp,  DefineExp} from "./L3-ast";
+         parseL3Exp,  DefineExp,
+         isClassExp,
+         ClassExp} from "./L3-ast";
 import { applyEnv, makeEmptyEnv, makeExtEnv, Env } from "./L3-env-env";
-import { isClosure, makeClosureEnv, Closure, Value } from "./L3-value";
+import { isClosure, makeClosureEnv, Closure, Value, Class, makeClass, isClass, isCObject, CObject, makeCObject, isSymbolSExp } from "./L3-value";
 import { applyPrimitive } from "./evalPrimitive";
 import { allT, first, rest, isEmpty, isNonEmptyList } from "../shared/list";
 import { Result, makeOk, makeFailure, bind, mapResult } from "../shared/result";
@@ -26,13 +28,14 @@ const applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isLitExp(exp) ? makeOk(exp.val) :
     isIfExp(exp) ? evalIf(exp, env) :
     isProcExp(exp) ? evalProc(exp, env) :
+    isClassExp(exp) ? evalClass(exp): //L31
     isLetExp(exp) ? evalLet(exp, env) :
     isAppExp(exp) ? bind(applicativeEval(exp.rator, env),
                       (proc: Value) =>
                         bind(mapResult((rand: CExp) => 
                            applicativeEval(rand, env), exp.rands),
                               (args: Value[]) =>
-                                 applyProcedure(proc, args))) :
+                                 applyProcedure(proc, args, env))) :
     makeFailure('"let" not supported (yet)');
 
 export const isTrueValue = (x: Value): boolean =>
@@ -46,10 +49,16 @@ const evalIf = (exp: IfExp, env: Env): Result<Value> =>
 const evalProc = (exp: ProcExp, env: Env): Result<Closure> =>
     makeOk(makeClosureEnv(exp.args, exp.body, env));
 
+// L31
+const evalClass = (exp: ClassExp): Result<Class> =>
+    makeOk(makeClass(exp.fields, exp.methods));
+
 // KEY: This procedure does NOT have an env parameter.
 //      Instead we use the env of the closure.
-const applyProcedure = (proc: Value, args: Value[]): Result<Value> =>
+const applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =>
     isPrimOp(proc) ? applyPrimitive(proc, args) :
+    isClass(proc) ? applyClass(proc, args, env) :
+    isCObject(proc) ? applyCObject(proc, args) :
     isClosure(proc) ? applyClosure(proc, args) :
     makeFailure(`Bad procedure ${format(proc)}`);
 
@@ -57,6 +66,37 @@ const applyClosure = (proc: Closure, args: Value[]): Result<Value> => {
     const vars = map((v: VarDecl) => v.var, proc.params);
     return evalSequence(proc.body, makeExtEnv(vars, args, proc.env));
 }
+
+export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => {
+    const procs: CExp[] = cls.methods.map(method => method.val);
+    const vars: string[] = map(((field: VarDecl) => field.var), cls.fields);
+    const funcNames: string[] = map(((method: Binding) => method.var.var), cls.methods);
+    if (!allT(isProcExp, procs)){
+        throw new Error("All methods must be ProcExp");
+    }
+    const closures =  map(((proc: ProcExp) => makeClosureEnv(proc.args, proc.body, makeExtEnv(vars, args, env))), procs);
+    return makeOk(makeCObject(funcNames, closures));
+}
+
+export const applyCObject = (obj: CObject, args: Value[]): Result<Value> => {
+    if (args.length === 0) {
+        return makeFailure("No function name provided");
+    }
+    const name = args[0];
+    if (!isSymbolSExp(name)) {
+        return makeFailure("Function name is not a symbol");
+    }
+    const funcName = name.val;
+    if (!obj.funcNames.includes(funcName)) {
+        return makeFailure(`Unrecognized method: ${funcName}`);
+    }
+    
+    const closureIndex = obj.funcNames.indexOf(funcName);
+    const closure = obj.closures[closureIndex];
+    
+    return applyClosure(closure, args.slice(1));
+}
+
 
 // Evaluate a sequence of expressions (in a program)
 export const evalSequence = (seq: Exp[], env: Env): Result<Value> =>

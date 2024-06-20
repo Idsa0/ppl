@@ -1,9 +1,9 @@
 // ========================================================
 // Value type definition for L4
 
-import { isPrimOp, CExp, PrimOp, VarDecl, Binding } from './L3-ast';
+import { isPrimOp, CExp, PrimOp, VarDecl, Binding} from './L3-ast';
 import { Env, makeEmptyEnv } from './L3-env-env';
-import { append } from 'ramda';
+import { append} from 'ramda';
 import { isArray, isNumber, isString } from '../shared/type-predicates';
 
 
@@ -32,15 +32,22 @@ export type Class = {
     tag: "Class";
     fields: VarDecl[];
     methods: Binding[];
-    env: Env;
 }
 export const makeClass = (fields: VarDecl[], methods: Binding[]): Class =>
-    ({tag: "Class", fields: fields, methods: methods, env : makeEmptyEnv()});
-
-export const makeClassEnv = (fields: VarDecl[], methods: Binding[], env: Env): Class =>
-    ({tag: "Class", fields: fields, methods: methods, env: env});
+    ({tag: "Class", fields: fields, methods: methods});
 
 export const isClass = (x: any): x is Class => x.tag === "Class";
+
+export type CObject = {
+    tag: "CObject";
+    funcNames: string[];
+    closures: Closure[];
+}
+
+export const makeCObject = (funcNames: string[], closures: Closure[]): CObject =>
+    ({tag: "CObject", funcNames: funcNames, closures: closures});
+
+export const isCObject = (x: any): x is CObject => x.tag === "CObject";
 
 // ========================================================
 // SExp
@@ -57,10 +64,10 @@ export type SymbolSExp = {
     val: string;
 }
 
-export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | Class;
+export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | Class | CObject;
 export const isSExp = (x: any): x is SExpValue =>
     typeof(x) === 'string' || typeof(x) === 'boolean' || typeof(x) === 'number' ||
-    isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x) || isClass(x);
+    isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x) || isClass(x) || isCObject(x);
 
 export const makeCompoundSExp = (val1: SExpValue, val2: SExpValue): CompoundSExp =>
     ({tag: "CompoundSexp", val1: val1, val2 : val2});
@@ -82,6 +89,11 @@ export const closureToString = (c: Closure): string =>
     // `<Closure ${c.params} ${L3unparse(c.body)}>`
     `<Closure ${c.params} ${c.body}>`
 
+// L31
+export const classToString = (c: Class): string => "Class";
+
+export const cObjectToString = (c: CObject): string => "Object"; 
+
 export const compoundSExpToArray = (cs: CompoundSExp, res: string[]): string[] | { s1: string[], s2: string } =>
     isEmptySExp(cs.val2) ? append(valueToString(cs.val1), res) :
     isCompoundSExp(cs.val2) ? compoundSExpToArray(cs.val2, append(valueToString(cs.val1), res)) :
@@ -97,8 +109,14 @@ export const valueToString = (val: Value): string =>
     val === false ? '#f' :
     isString(val) ? `"${val}"` :
     isClosure(val) ? closureToString(val) :
+    isClass(val) ? classToString(val) : // L31
+    isCObject(val) ? cObjectToString(val) : // L31
     isPrimOp(val) ? val.op :
     isSymbolSExp(val) ? val.val :
     isEmptySExp(val) ? "'()" :
     isCompoundSExp(val) ? compoundSExpToString(val) :
     val;
+function valueToLitExp(x: SExpValue): CExp {
+    throw new Error('Function not implemented.');
+}
+
