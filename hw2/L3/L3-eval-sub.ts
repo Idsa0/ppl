@@ -1,6 +1,6 @@
 // L3-eval.ts
 import { map } from "ramda";
-import { ClassExp, isCExp, isClassExp, isLetExp, makeClassExp } from "./L3-ast";
+import { Binding, ClassExp, isCExp, isClassExp, isLetExp, makeClassExp } from "./L3-ast";
 import { BoolExp, CExp, Exp, IfExp, LitExp, NumExp,
          PrimOp, ProcExp, Program, StrExp, VarDecl } from "./L3-ast";
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
@@ -8,8 +8,8 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
 import { makeBoolExp, makeLitExp, makeNumExp, makeProcExp, makeStrExp } from "./L3-ast";
 import { parseL3Exp } from "./L3-ast";
 import { applyEnv, makeEmptyEnv, makeEnv, Env } from "./L3-env-sub";
-import { isClosure, makeClosure, Closure, Value, Class, makeClass, isClass, CObject, makeCObject, isCObject, isSymbolSExp } from "./L3-value";
-import { first, rest, isEmpty, List, isNonEmptyList } from '../shared/list';
+import { isClosure, makeClosure, Closure, Value, Class, makeClass, isClass, CObject, makeCObject, isCObject, isSymbolSExp, makeClosureEnv } from "./L3-value";
+import { first, rest, isEmpty, List, isNonEmptyList, allT } from '../shared/list';
 import { isBoolean, isNumber, isString } from "../shared/type-predicates";
 import { Result, makeOk, makeFailure, bind, mapResult, mapv } from "../shared/result";
 import { renameExps, substitute } from "./substitute";
@@ -81,8 +81,22 @@ const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => 
 }
 
 // L31
-export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => 
-    makeOk(makeCObject(cls.fields, cls.methods, map(valueToLitExp, args)));
+// export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => 
+//     makeOk(makeCObject(cls.fields, cls.methods, map(valueToLitExp, args)));
+
+export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => {
+    const procs: CExp[] = cls.methods.map(method => method.val);
+    const vars: string[] = map(((field: VarDecl) => field.var), cls.fields);
+    const funcNames: string[] = map(((method: Binding) => method.var.var), cls.methods);
+    const renamedProcs = renameExps(procs);
+    const appliedProcs = substitute(renamedProcs, vars, map(valueToLitExp, args))
+    if (!allT(isProcExp, appliedProcs)){
+        throw new Error("All methods must be ProcExp");
+    }
+    const closures =  map(((proc: ProcExp) => makeClosure(proc.args, proc.body)), appliedProcs);
+    return makeOk(makeCObject(funcNames, closures));
+}
+    
 
 export const applyCObject = (obj: CObject, args: Value[], env: Env): Result<Value> => {
     if (args.length === 0) {

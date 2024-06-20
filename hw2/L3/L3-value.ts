@@ -46,20 +46,23 @@ export type CObject = {
     closures: Closure[];
 }
 
-export const makeCObject = (fields: VarDecl[], methods: Binding[], args: CExp[], env?: Env): CObject => {
-    const procs: CExp[] = methods.map(method => method.val);
-    const vars: string[] = map(((field: VarDecl) => field.var), fields);
-    const funcNames: string[] = map(((method: Binding) => method.var.var), methods);
-    const renamedProcs = renameExps(procs);
-    const appliedProcs = substitute(renamedProcs, vars, args)
-    if (!allT(isProcExp, appliedProcs)){
-        throw new Error("All methods must be ProcExp");
-    }
-    const closures = env 
-        ? map(((proc: ProcExp) => makeClosureEnv(proc.args, proc.body, env)), appliedProcs)
-        : map(((proc: ProcExp) => makeClosure(proc.args, proc.body)), appliedProcs);
-    return {tag: "CObject", funcNames: funcNames, closures: closures};
-}
+// export const makeCObject = (fields: VarDecl[], methods: Binding[], args: CExp[], env?: Env): CObject => {
+//     const procs: CExp[] = methods.map(method => method.val);
+//     const vars: string[] = map(((field: VarDecl) => field.var), fields);
+//     const funcNames: string[] = map(((method: Binding) => method.var.var), methods);
+//     const renamedProcs = renameExps(procs);
+//     const appliedProcs = substitute(renamedProcs, vars, args)
+//     if (!allT(isProcExp, appliedProcs)){
+//         throw new Error("All methods must be ProcExp");
+//     }
+//     const closures = env 
+//         ? map(((proc: ProcExp) => makeClosureEnv(proc.args, proc.body, env)), appliedProcs)
+//         : map(((proc: ProcExp) => makeClosure(proc.args, proc.body)), appliedProcs);
+//     return {tag: "CObject", funcNames: funcNames, closures: closures};
+// }
+
+export const makeCObject = (funcNames: string[], closures: Closure[]): CObject =>
+    ({tag: "CObject", funcNames: funcNames, closures: closures});
 
 export const isCObject = (x: any): x is CObject => x.tag === "CObject";
 
