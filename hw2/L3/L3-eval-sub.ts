@@ -30,7 +30,7 @@ const L3applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isLitExp(exp) ? makeOk(exp.val) :
     isIfExp(exp) ? evalIf(exp, env) :
     isProcExp(exp) ? evalProc(exp, env) :
-    isClassExp(exp) ? evalClass(exp, env): //L31
+    isClassExp(exp) ? evalClass(exp): //L31
     isAppExp(exp) ? bind(L3applicativeEval(exp.rator, env), (rator: Value) =>
                         bind(mapResult(param => L3applicativeEval(param, env), exp.rands), (rands: Value[]) =>
                                 L3applyProcedure(rator, rands, env))) :
@@ -49,12 +49,12 @@ const evalProc = (exp: ProcExp, env: Env): Result<Closure> =>
     makeOk(makeClosure(exp.args, exp.body));
 
 // L31
-const evalClass = (exp: ClassExp, env: Env): Result<Class> =>
+const evalClass = (exp: ClassExp): Result<Class> =>
     makeOk(makeClass(exp.fields, exp.methods));
 
 const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =>
     isPrimOp(proc) ? applyPrimitive(proc, args) :
-    isClass(proc) ? applyClass(proc, args, env) :
+    isClass(proc) ? applyClass(proc, args) :
     isCObject(proc) ? applyCObject(proc, args, env) :
     isClosure(proc) ? applyClosure(proc, args, env) :
     makeFailure(`Bad procedure ${format(proc)}`);
@@ -81,10 +81,8 @@ const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => 
 }
 
 // L31
-// export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => 
-//     makeOk(makeCObject(cls.fields, cls.methods, map(valueToLitExp, args)));
 
-export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => {
+export const applyClass = (cls: Class, args: Value[]): Result<CObject> => {
     const procs: CExp[] = cls.methods.map(method => method.val);
     const vars: string[] = map(((field: VarDecl) => field.var), cls.fields);
     const funcNames: string[] = map(((method: Binding) => method.var.var), cls.methods);
