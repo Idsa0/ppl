@@ -1,6 +1,6 @@
 // L3-eval.ts
 import { map } from "ramda";
-import { ClassExp, isCExp, isClassExp, isLetExp } from "./L3-ast";
+import { ClassExp, isCExp, isClassExp, isLetExp, makeClassExp } from "./L3-ast";
 import { BoolExp, CExp, Exp, IfExp, LitExp, NumExp,
          PrimOp, ProcExp, Program, StrExp, VarDecl } from "./L3-ast";
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
@@ -8,7 +8,7 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
 import { makeBoolExp, makeLitExp, makeNumExp, makeProcExp, makeStrExp } from "./L3-ast";
 import { parseL3Exp } from "./L3-ast";
 import { applyEnv, makeEmptyEnv, makeEnv, Env } from "./L3-env-sub";
-import { isClosure, makeClosure, Closure, Value, Class, makeClass, isObject, isClass, CObject } from "./L3-value";
+import { isClosure, makeClosure, Closure, Value, Class, makeClass, isClass, CObject, makeCObject, isCObject, isSymbolSExp } from "./L3-value";
 import { first, rest, isEmpty, List, isNonEmptyList } from '../shared/list';
 import { isBoolean, isNumber, isString } from "../shared/type-predicates";
 import { Result, makeOk, makeFailure, bind, mapResult, mapv } from "../shared/result";
@@ -32,10 +32,7 @@ const L3applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isProcExp(exp) ? evalProc(exp, env) :
     isClassExp(exp) ? evalClass(exp, env): //L31
     isAppExp(exp) ? bind(L3applicativeEval(exp.rator, env), (rator: Value) =>
-                        bind(mapResult(param => 
-                            L3applicativeEval(param, env), 
-                              exp.rands), 
-                            (rands: Value[]) =>
+                        bind(mapResult(param => L3applicativeEval(param, env), exp.rands), (rands: Value[]) =>
                                 L3applyProcedure(rator, rands, env))) :
     isLetExp(exp) ? makeFailure('"let" not supported (yet)') :
     makeFailure('Never');
@@ -51,14 +48,14 @@ const evalIf = (exp: IfExp, env: Env): Result<Value> =>
 const evalProc = (exp: ProcExp, env: Env): Result<Closure> =>
     makeOk(makeClosure(exp.args, exp.body));
 
-// TODO L31
+// L31
 const evalClass = (exp: ClassExp, env: Env): Result<Class> =>
     makeOk(makeClass(exp.fields, exp.methods));
 
 const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =>
     isPrimOp(proc) ? applyPrimitive(proc, args) :
     isClass(proc) ? applyClass(proc, args, env) :
-    isObject(proc) ? applyObject(proc, args, env) :
+    isCObject(proc) ? applyCObject(proc, args, env) :
     isClosure(proc) ? applyClosure(proc, args, env) :
     makeFailure(`Bad procedure ${format(proc)}`);
 
@@ -66,12 +63,13 @@ const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =
 // values into the body of the closure.
 // To make the types fit - computed values of params must be
 // turned back in Literal Expressions that eval to the computed value.
-const valueToLitExp = (v: Value): NumExp | BoolExp | StrExp | LitExp | PrimOp | ProcExp =>
+const valueToLitExp = (v: Value): NumExp | BoolExp | StrExp | LitExp | PrimOp | ProcExp | ClassExp =>
     isNumber(v) ? makeNumExp(v) :
     isBoolean(v) ? makeBoolExp(v) :
     isString(v) ? makeStrExp(v) :
     isPrimOp(v) ? v :
     isClosure(v) ? makeProcExp(v.params, v.body) :
+    isClass(v) ? makeClassExp(v.fields, v.methods) :
     makeLitExp(v);
 
 const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => {
@@ -83,17 +81,26 @@ const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => 
 }
 
 // L31
-//TODO applyClass---->Result<Objt>
-export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => {
-    const vars = map((v: VarDecl) => v.var, cls.fields);
-    const body = cls.methods;
-    const litArgs : CExp[] = map(valueToLitExp, args);
-    return evalSequence(substitute(body, vars, litArgs), env);
-}
+export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject> => 
+    makeOk(makeCObject(cls.fields, cls.methods, map(valueToLitExp, args)));
 
-//TODO applyObject---->Result<Value>
-export const applyObject = (obj: CObject, args: Value[], env: Env): Result<Value> => {
-    return makeOk(obj);
+export const applyCObject = (obj: CObject, args: Value[], env: Env): Result<Value> => {
+    if (args.length === 0) {
+        return makeFailure("No function name provided");
+    }
+    const name = args[0];
+    if (!isSymbolSExp(name)) {
+        return makeFailure("Function name is not a symbol");
+    }
+    const funcName = name.val;
+    if (!obj.funcNames.includes(funcName)) {
+        return makeFailure(`Unrecognized method: ${funcName}`);
+    }
+    
+    const closureIndex = obj.funcNames.indexOf(funcName);
+    const closure = obj.closures[closureIndex];
+    
+    return applyClosure(closure, args.slice(1), env);
 }
 
 // Evaluate a sequence of expressions (in a program)

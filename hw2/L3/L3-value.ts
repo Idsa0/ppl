@@ -1,10 +1,12 @@
 // ========================================================
 // Value type definition for L4
 
-import { isPrimOp, CExp, PrimOp, VarDecl, Binding } from './L3-ast';
+import { isPrimOp, CExp, PrimOp, VarDecl, Binding, isProcExp, ProcExp } from './L3-ast';
 import { Env, makeEmptyEnv } from './L3-env-env';
-import { append } from 'ramda';
+import { append, map } from 'ramda';
 import { isArray, isNumber, isString } from '../shared/type-predicates';
+import { allT, cons } from '../shared/list';
+import { renameExps, substitute } from './substitute';
 
 
 export type Value = SExpValue;
@@ -32,28 +34,34 @@ export type Class = {
     tag: "Class";
     fields: VarDecl[];
     methods: Binding[];
-   // env: Env;
-} // TODO check if env is needed
+}
 export const makeClass = (fields: VarDecl[], methods: Binding[]): Class =>
-    //({tag: "Class", fields: fields, methods: methods, env : makeEmptyEnv()});
-    ({tag: "Class", fields: fields, methods: methods});   
-
-// export const makeClassEnv = (fields: VarDecl[], methods: Binding[], env: Env): Class =>
-//     ({tag: "Class", fields: fields, methods: methods, env: env});
+    ({tag: "Class", fields: fields, methods: methods});
 
 export const isClass = (x: any): x is Class => x.tag === "Class";
 
 export type CObject = {
     tag: "CObject";
-    fields: Value[];
     funcNames: string[];
     closures: Closure[];
 }
 
-export const makeObject = (fields: Value[], funcNames: string[] , closures: Closure[]): CObject =>
-    ({tag: "CObject", fields: fields, funcNames: funcNames , closures: closures});
+export const makeCObject = (fields: VarDecl[], methods: Binding[], args: CExp[], env?: Env): CObject => {
+    const procs: CExp[] = methods.map(method => method.val);
+    const vars: string[] = map(((field: VarDecl) => field.var), fields);
+    const funcNames: string[] = map(((method: Binding) => method.var.var), methods);
+    const renamedProcs = renameExps(procs);
+    const appliedProcs = substitute(renamedProcs, vars, args)
+    if (!allT(isProcExp, appliedProcs)){
+        throw new Error("All methods must be ProcExp");
+    }
+    const closures = env 
+        ? map(((proc: ProcExp) => makeClosureEnv(proc.args, proc.body, env)), appliedProcs)
+        : map(((proc: ProcExp) => makeClosure(proc.args, proc.body)), appliedProcs);
+    return {tag: "CObject", funcNames: funcNames, closures: closures};
+}
 
-export const isObject = (x: any): x is CObject => x.tag === "CObject";
+export const isCObject = (x: any): x is CObject => x.tag === "CObject";
 
 // ========================================================
 // SExp
@@ -73,7 +81,7 @@ export type SymbolSExp = {
 export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | Class | CObject;
 export const isSExp = (x: any): x is SExpValue =>
     typeof(x) === 'string' || typeof(x) === 'boolean' || typeof(x) === 'number' ||
-    isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x) || isClass(x);
+    isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x) || isClass(x) || isCObject(x);
 
 export const makeCompoundSExp = (val1: SExpValue, val2: SExpValue): CompoundSExp =>
     ({tag: "CompoundSexp", val1: val1, val2 : val2});
@@ -111,9 +119,13 @@ export const valueToString = (val: Value): string =>
     isString(val) ? `"${val}"` :
     isClosure(val) ? closureToString(val) :
     isClass(val) ? `Class` ://TODO
-    isObject(val) ? `Object` ://TODO
+    isCObject(val) ? `Object` ://TODO
     isPrimOp(val) ? val.op :
     isSymbolSExp(val) ? val.val :
     isEmptySExp(val) ? "'()" :
     isCompoundSExp(val) ? compoundSExpToString(val) :
     val;
+function valueToLitExp(x: SExpValue): CExp {
+    throw new Error('Function not implemented.');
+}
+
