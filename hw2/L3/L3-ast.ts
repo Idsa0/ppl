@@ -244,9 +244,9 @@ const parseClassExp = (fields: Sexp, methods: Sexp): Result<ClassExp> => {
     } else if (!isGoodBindings(methods)){
        return makeFailure(`Invalid methods for ClassExp ${format(methods)}`);
     }
-    const vars = map(b => b[0], methods);
-    const valsResult = mapResult(parseL3CExp, map(second, methods));
-    const bindingsResult = mapv(valsResult, (vals: CExp[]) => zipWith(makeBinding, vars, vals));
+    const names = map(b => b[0], methods);
+    const functionsResult = mapResult(parseL3CExp, map(second, methods));
+    const bindingsResult = mapv(functionsResult, (vals: CExp[]) => zipWith(makeBinding, names, vals));
     return mapv (bindingsResult, (bindings: Binding[]) =>
                  makeClassExp(map(makeVarDecl, fields), bindings));
 }
