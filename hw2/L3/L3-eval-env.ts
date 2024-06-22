@@ -30,7 +30,6 @@ const applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isProcExp(exp) ? evalProc(exp, env) :
     isClassExp(exp) ? evalClass(exp): //L31
     isLetExp(exp) ? evalLet(exp, env) :
-    isClosure(exp) ? makeOk(exp) :
     isAppExp(exp) ? bind(applicativeEval(exp.rator, env),
                       (proc: Value) =>
                         bind(mapResult((rand: CExp) => 
