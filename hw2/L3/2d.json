@@ -1,0 +1,82 @@
+//their code
+
+
+(define pi 3.14)
+(define square (lambda (x) * x x)) //TODO: maybe missing ()
+(define circle
+    (class (x y radius)
+        ((area (lambda () (* (square radius) pi)))
+         (perimeter (lambda () (* 2 pi radius))
+    )
+)
+(define c (circle 0 0 3))
+(c'area)
+
+=============================================
+//code after conversion
+
+
+(define pi 3.14)
+(define square (lambda (x) * x x))
+(define circle
+    (lambda (x y radius)
+        (lambda (msg) 
+            (if (eq? msg 'area)
+                ((lambda () (* (square radius) pi)) )
+                (if (eq? msg 'perimeter)
+                    ((lambda () (* 2 pi radius)) )
+                    #f)))))
+(define c (circle 0 0 3))
+(c 'area)
+
+=============================================
+// list of expresions send to L3ApplicativeEval
+->
+3.14
+(lambda (x) * x x)
+(lambda (x y radius)
+        (lambda (msg) 
+            (if (eq? msg 'area)
+                ((lambda () (* (square radius) pi)) )
+                (if (eq? msg 'perimeter)
+                    ((lambda () (* 2 pi radius)) )
+                    #f))))
+(circle 0 0 3)
+circle
+0
+0
+3
+(lambda (msg) 
+            (if (eq? msg 'area)
+                ((lambda () (* (square 3) pi)) )
+                (if (eq? msg 'perimeter)
+                    ((lambda () (* 2 pi 3)) )
+                    #f)))
+(c 'area)
+c
+'area
+(if (eq? 'area 'area)
+                ((lambda () (* (square 3) pi)) )
+                (if (eq? 'area 'perimeter)
+                    ((lambda () (* 2 pi 3)) )
+                    #f))
+(eq? 'area 'area)
+eq?
+'area
+'area
+((lambda () (* (square 3) pi)) )
+(lambda () (* (square 3) pi))
+()
+(* (square 3) pi)
+*
+(square 3)
+square
+3
+(* 3 3)
+*
+3
+3
+pi
+**done**
+
+
