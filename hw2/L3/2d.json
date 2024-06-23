@@ -17,7 +17,7 @@
 
 
 (define pi 3.14)
-(define square (lambda (x) * x x))
+(define square (lambda (x) (* x x)))
 (define circle
     (lambda (x y radius)
         (lambda (msg) 
@@ -33,7 +33,7 @@
 // list of expresions send to L3ApplicativeEval
 ->
 3.14
-(lambda (x) * x x)
+(lambda (x) (* x x))
 (lambda (x y radius)
         (lambda (msg) 
             (if (eq? msg 'area)
