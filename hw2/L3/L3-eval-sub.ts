@@ -89,7 +89,7 @@ export const applyClass = (cls: Class, args: Value[]): Result<CObject> => {
     const renamedProcs = renameExps(procs);
     const appliedProcs = substitute(renamedProcs, vars, map(valueToLitExp, args))
     if (!allT(isProcExp, appliedProcs)){
-        throw new Error("All methods must be ProcExp");
+        throw new Error("All methods must be ProcExp"); // TODO makeFailure instead
     }
     const closures =  map(((proc: ProcExp) => makeClosure(proc.args, proc.body)), appliedProcs);
     return makeOk(makeCObject(funcNames, closures));
