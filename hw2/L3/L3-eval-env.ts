@@ -72,7 +72,7 @@ export const applyClass = (cls: Class, args: Value[], env: Env): Result<CObject>
     const vars: string[] = map(((field: VarDecl) => field.var), cls.fields);
     const funcNames: string[] = map(((method: Binding) => method.var.var), cls.methods);
     if (!allT(isProcExp, procs)){
-        throw new Error("All methods must be ProcExp");
+        return makeFailure("All methods must be ProcExp");
     }
     const closures =  map(((proc: ProcExp) => makeClosureEnv(proc.args, proc.body, makeExtEnv(vars, args, env))), procs);
     return makeOk(makeCObject(funcNames, closures));

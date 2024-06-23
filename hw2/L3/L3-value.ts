@@ -116,7 +116,4 @@ export const valueToString = (val: Value): string =>
     isEmptySExp(val) ? "'()" :
     isCompoundSExp(val) ? compoundSExpToString(val) :
     val;
-function valueToLitExp(x: SExpValue): CExp {
-    throw new Error('Function not implemented.');
-}
 
