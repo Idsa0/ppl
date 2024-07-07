@@ -6,7 +6,7 @@
 import { join, map, zipWith } from "ramda";
 import { Sexp, Token } from 's-expression';
 import { isCompoundSExp, isEmptySExp, isSymbolSExp, makeCompoundSExp, makeEmptySExp, makeSymbolSExp, SExpValue, valueToString } from './L5-value';
-import { isTVar, makeFreshTVar, parseTExp, unparseTExp, TExp } from './TExp';
+import { isTVar, makeFreshTVar, parseTExp, unparseTExp, TExp, makePredTExp } from './TExp';
 import { allT, first, rest, second, isEmpty, isNonEmptyList } from '../shared/list';
 import { parse as p, isToken, isSexpString } from "../shared/parser";
 import { Result, bind, makeFailure, mapResult, makeOk, mapv } from "../shared/result";
@@ -253,8 +253,12 @@ const parseIfExp = (params: Sexp[]): Result<IfExp> =>
 const parseProcExp = (vars: Sexp, rest: Sexp[]): Result<ProcExp> => {
     if (isArray(vars)) {
         const args = mapResult(parseVarDecl, vars);
-        const body = mapResult(parseL5CExp, rest[0] === ":" ? rest.slice(2) : rest);
-        const returnTE = rest[0] === ":" ? parseTExp(rest[1]) : makeOk(makeFreshTVar());
+        const body = mapResult(parseL5CExp, rest[0] === ":" ? rest[1] === "is?" ? rest.slice(3) : rest.slice(2) : rest);
+        const returnTE = rest[0] === ":" ?
+            rest[1] === "is?" ?
+                bind(parseTExp(rest[1]), (type) => makeOk(makePredTExp(type))) :
+                parseTExp(rest[1]) :
+                makeOk(makeFreshTVar());
         return bind(args, (args: VarDecl[]) =>
                     bind(body, (body: CExp[]) =>
                         mapv(returnTE, (returnTE: TExp) =>
