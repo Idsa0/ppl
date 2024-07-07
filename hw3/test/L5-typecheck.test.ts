@@ -2,7 +2,7 @@ import { parseL5Exp, Exp, makeNumExp } from '../src/L5/L5-ast';
 import { typeofExp, L5typeof, L5typeofProgram, checkCompatibleType, makeUnion } from '../src/L5/L5-typecheck';
 import { makeEmptyTEnv, makeExtendTEnv } from '../src/L5/TEnv';
 import { makeBoolTExp, makeNumTExp, makeProcTExp, makeTVar, makeVoidTExp, parseTE, unparseTExp, isUnionTExp, makeStrTExp } from '../src/L5/TExp';
-import { makeOk, bind, isFailure, mapv } from '../src/shared/result';
+import { makeOk, makeFailure, bind, isFailure, mapv } from '../src/shared/result';
 import { parse as p } from "../src/shared/parser";
 
 describe('L5 Type Checker', () => {
@@ -75,18 +75,18 @@ describe('L5 Type Checker', () => {
             expect(L5typeof("(not (< 1 2))")).toEqual(makeOk("boolean"));
         });
 
-        it.skip('type checking of generic functions is not supported', () => {
-            // All of these fail in TypeCheck because we do not support generic functions
-            // They do work in Type Inference.
-            expect(L5typeof("(eq? 1 2)")).toEqual(makeOk("boolean"));
-            expect(L5typeof('(string=? "a" "b")')).toEqual(makeOk("boolean"));
-            expect(L5typeof('(number? 1)')).toEqual(makeOk("boolean"));
-            expect(L5typeof('(boolean? "a")')).toEqual(makeOk("boolean"));
-            expect(L5typeof('(string? "a")')).toEqual(makeOk("boolean"));
-            expect(L5typeof('(symbol? "a")')).toEqual(makeOk("boolean"));
-            expect(L5typeof('(list? "a")')).toEqual(makeOk("boolean"));
-            expect(L5typeof('(pair? "a")')).toEqual(makeOk("boolean"));
-        });
+        // it.skip('type checking of generic functions is not supported', () => {
+        //     // All of these fail in TypeCheck because we do not support generic functions
+        //     // They do work in Type Inference.
+        //     expect(L5typeof("(eq? 1 2)")).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(string=? "a" "b")')).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(number? 1)')).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(boolean? "a")')).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(string? "a")')).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(symbol? "a")')).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(list? "a")')).toEqual(makeOk("boolean"));
+        //     expect(L5typeof('(pair? "a")')).toEqual(makeOk("boolean"));
+        // });
 
         it('returns the type of a VarRef in a given TEnv', () => {
             expect(bind(bind(p("x"), parseL5Exp), (exp: Exp) => typeofExp(exp, makeExtendTEnv(["x"], [makeNumTExp()], makeEmptyTEnv())))).toEqual(makeOk(makeNumTExp()));
@@ -126,49 +126,49 @@ describe('L5 Type Checker', () => {
             expect(L5typeof("(define (x : (Empty -> number)) (lambda () : number 1))")).toEqual(makeOk("void"));
         });
 
-        it.skip('returns "literal" as the type for literal expressions', () => {
-            expect(L5typeof("(quote ())")).toEqual(makeOk("literal"));
-        });
+        // it.skip('returns "literal" as the type for literal expressions', () => {
+        //     expect(L5typeof("(quote ())")).toEqual(makeOk("literal"));
+        // });
 
-        describe.skip('Pairs', () => {
-            it('returns the pair type for "cons" applications', () => {
-                expect(L5typeof("(cons 1 '())")).toEqual(makeOk("(Pair number literal)"));
-                expect(L5typeof("(cons 1 1)")).toEqual(makeOk("(Pair number number)"));
-            });
+        // describe.skip('Pairs', () => {
+        //     it('returns the pair type for "cons" applications', () => {
+        //         expect(L5typeof("(cons 1 '())")).toEqual(makeOk("(Pair number literal)"));
+        //         expect(L5typeof("(cons 1 1)")).toEqual(makeOk("(Pair number number)"));
+        //     });
     
-            it('returns the correct type for applications of "car" and "cdr" on pairs', () => {
-                expect(L5typeof("(car (cons 1 1))")).toEqual(makeOk("number"));
-                expect(L5typeof("(cdr (cons 1 #t))")).toEqual(makeOk("boolean"));
-                expect(L5typeof("(cdr (cons (cons 1 2) (cons 1 2)))")).toEqual(makeOk("(Pair number number)"));
-                expect(L5typeof("(cdr (cons (cons 1 2) (cons 1 #f)))")).toEqual(makeOk("(Pair number boolean)"));
-                expect(L5typeof("(car (cons (cons 1 2) (cons 1 #f)))")).toEqual(makeOk("(Pair number number)"));
-                expect(L5typeof("(car (cons (cons (cons #t #t) 2) (cons 1 #f)))")).toEqual(makeOk("(Pair (Pair boolean boolean) number)"));
-                expect(L5typeof("(cdr (cons (cons (cons #t #t) 2) (cons 1 #f)))")).toEqual(makeOk("(Pair number boolean)"));
-            });
+        //     it('returns the correct type for applications of "car" and "cdr" on pairs', () => {
+        //         expect(L5typeof("(car (cons 1 1))")).toEqual(makeOk("number"));
+        //         expect(L5typeof("(cdr (cons 1 #t))")).toEqual(makeOk("boolean"));
+        //         expect(L5typeof("(cdr (cons (cons 1 2) (cons 1 2)))")).toEqual(makeOk("(Pair number number)"));
+        //         expect(L5typeof("(cdr (cons (cons 1 2) (cons 1 #f)))")).toEqual(makeOk("(Pair number boolean)"));
+        //         expect(L5typeof("(car (cons (cons 1 2) (cons 1 #f)))")).toEqual(makeOk("(Pair number number)"));
+        //         expect(L5typeof("(car (cons (cons (cons #t #t) 2) (cons 1 #f)))")).toEqual(makeOk("(Pair (Pair boolean boolean) number)"));
+        //         expect(L5typeof("(cdr (cons (cons (cons #t #t) 2) (cons 1 #f)))")).toEqual(makeOk("(Pair number boolean)"));
+        //     });
             
-            it('returns the correct type for procedures that return pairs', () => {
-                expect(L5typeof("(lambda((a : number) (b : number)) : (Pair number number) (cons a b))")).toEqual(makeOk("(number * number -> (Pair number number))"));
-            });
+        //     it('returns the correct type for procedures that return pairs', () => {
+        //         expect(L5typeof("(lambda((a : number) (b : number)) : (Pair number number) (cons a b))")).toEqual(makeOk("(number * number -> (Pair number number))"));
+        //     });
     
-            it('returns the correct type for procedures that take pairs as arguments', () => {
-                expect(L5typeof("(lambda((a : number) (b : (Pair number boolean))) : (Pair number (Pair number boolean)) (cons a b))")).toEqual(
-                    makeOk("(number * (Pair number boolean) -> (Pair number (Pair number boolean)))")
-                );
-            });
+        //     it('returns the correct type for procedures that take pairs as arguments', () => {
+        //         expect(L5typeof("(lambda((a : number) (b : (Pair number boolean))) : (Pair number (Pair number boolean)) (cons a b))")).toEqual(
+        //             makeOk("(number * (Pair number boolean) -> (Pair number (Pair number boolean)))")
+        //         );
+        //     });
 
-            it('returns the correct type for procedures that take and return pairs', () => {
-                expect(L5typeof(`(lambda ((a : (Pair number number))
-                                          (b : (Pair number boolean))) : (Pair (Pair number number) (Pair (Pair number number) (Pair number boolean)))
-                                   (cons a (cons a b)))`)).toEqual(
-                    makeOk("((Pair number number) * (Pair number boolean) -> (Pair (Pair number number) (Pair (Pair number number) (Pair number boolean))))")
-                );
-            });
+        //     it('returns the correct type for procedures that take and return pairs', () => {
+        //         expect(L5typeof(`(lambda ((a : (Pair number number))
+        //                                   (b : (Pair number boolean))) : (Pair (Pair number number) (Pair (Pair number number) (Pair number boolean)))
+        //                            (cons a (cons a b)))`)).toEqual(
+        //             makeOk("((Pair number number) * (Pair number boolean) -> (Pair (Pair number number) (Pair (Pair number number) (Pair number boolean))))")
+        //         );
+        //     });
 
-            it('returns "void" when defining pairs', () => {
-                expect(L5typeof("(define (x : (Pair number boolean)) (cons 1 #t))")).toEqual(makeOk("void"));
-                expect(L5typeof("(define (x : (Pair (T1 -> T1) number)) (cons (lambda ((y : T1)) : T1 y) 2))")).toEqual(makeOk("void"));
-            });
-        });
+        //     it('returns "void" when defining pairs', () => {
+        //         expect(L5typeof("(define (x : (Pair number boolean)) (cons 1 #t))")).toEqual(makeOk("void"));
+        //         expect(L5typeof("(define (x : (Pair (T1 -> T1) number)) (cons (lambda ((y : T1)) : T1 y) 2))")).toEqual(makeOk("void"));
+        //     });
+        // });
 
         it('returns the type of polymorphic procedures', () => {
             expect(L5typeof("(lambda((x : T1)) : T1 x)")).toEqual(makeOk("(T1 -> T1)"));
@@ -335,6 +335,7 @@ describe('L5 Test checkCompatibleType with unions in arg positions of Procedures
 });
 
 
+// L52 Tests Begin
 describe('L52 Type Checker', () => {
     
     describe('TypePred 0', () => {
@@ -349,8 +350,32 @@ describe('L52 Type Checker', () => {
     describe('TypePred 0', () => {
         const p0 = `
         (L5
-            (define (a_is_n : (any -> is number))
-                (lambda ((x : any)) : is number (number? x)))
+            (define (test : ((inter any number) -> number))
+                (lambda ((x : (inter any number))) : number x))
+            (test 3)
+        )
+        `;
+        expect(L5typeofProgram(p0)).toEqual(makeOk("number"));
+    });
+
+    describe('TypePred 0', () => {
+        const p0 = `
+        (L5
+            (define (test : ((inter any number) -> number))
+                (lambda ((x : (inter any number))) : number x))
+            (test "hi")
+        )
+        `;
+        const test = L5typeofProgram(p0);
+        expect(L5typeofProgram(p0)).toEqual(makeFailure("Incompatible types: string and number in (test \"hi\")"));
+    });
+    
+    describe('TypePred 0', () => {
+        const p0 = `
+        (L5
+            (define (a_is_n : (any -> is? number))
+                (lambda ((x : any)) : is? number (number? x)))
+            (define (x : (union string number)) 1)
             (if (a_is_n x)
                 x
                 1)
@@ -359,3 +384,4 @@ describe('L52 Type Checker', () => {
         expect(L5typeofProgram(p0)).toEqual(makeOk("number"));
     });
 });
+// L52 Tests End
