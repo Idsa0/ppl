@@ -1,6 +1,6 @@
 // L5-typecheck
 // ========================================================
-import { equals, map, zipWith } from 'ramda';
+import { equals, is, map, zipWith } from 'ramda';
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNumExp,
          isPrimOp, isProcExp, isProgram, isStrExp, isVarRef, parseL5Exp, unparse,
          AppExp, BoolExp, DefineExp, Exp, IfExp, LetrecExp, LetExp, NumExp,
@@ -8,7 +8,7 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNum
 import { applyTEnv, makeEmptyTEnv, makeExtendTEnv, TEnv } from "./TEnv";
 import { isProcTExp, makeBoolTExp, makeNumTExp, makeProcTExp, makeStrTExp, makeVoidTExp,
          parseTE, unparseTExp, makeUnionTExp,
-         BoolTExp, NumTExp, StrTExp, TExp, VoidTExp, isSubType } from "./TExp";
+         BoolTExp, NumTExp, StrTExp, TExp, VoidTExp, isSubType, isPredTExp, isAnyTExp } from "./TExp";
 import { isEmpty, allT, first, rest, NonEmptyList, List, isNonEmptyList } from '../shared/list';
 import { Result, makeFailure, bind, makeOk, zipWithResult, either } from '../shared/result';
 import { parse as p } from "../shared/parser";
@@ -27,6 +27,7 @@ import { format } from '../shared/format';
 // Union[TEs1] contains Union[TEs2] if Union[TEs1] contains all elements of Union[TEs2]
 export const checkCompatibleType = (te1: TExp, te2: TExp, exp: Exp): Result<true> =>
   isSubType(te1, te2) ? makeOk(true) :
+  isAnyTExp(te1) || isAnyTExp(te2) ? makeOk(true) :
   bind(unparseTExp(te1), (te1: string) =>
     bind(unparseTExp(te2), (te2: string) =>
         bind(unparse(exp), (exp: string) => 
@@ -140,13 +141,34 @@ export const typeofIfNormal = (ifExp: IfExp, tenv: TEnv): Result<TExp> => {
                 constraint2);
 };
 
+// Purpose: compute the type of an if-exp that is a Type predicate
+// Typing rule:
+//   if type<test>(tenv) = (T -> boolean)
+//      type<then>(tenv) = t1
+//      type<else>(extend-tenv(x:t1; tenv)) = t1
+// then type<(if test then else)>(tenv) = t1
+export const typeofIfSpecial = (ifExp: IfExp, regTenv: TEnv, thenTenv: TEnv): Result<TExp> => {
+    const testTE = typeofExp(ifExp.test, regTenv);
+    const thenTE = typeofExp(ifExp.then, thenTenv);
+    const altTE = typeofExp(ifExp.alt, regTenv);
+    const constraint1 = bind(testTE, testTE => checkCompatibleType(testTE, makeBoolTExp(), ifExp));
+    const constraint2 = bind(thenTE, (thenTE: TExp) =>
+                            bind(altTE, (altTE: TExp) =>
+                                makeOk(makeUnion(thenTE, altTE))));
+    return bind(constraint1, (_c1: true) => constraint2);
+};
+
 // L52 Structured methods
-const isTypePredApp = (e: Exp, tenv: TEnv): Result<{/* Add parameters */}> => {
-}
+const isTypePredApp = (e: Exp, tenv: TEnv): Result<TEnv> => 
+    isAppExp(e) ? bind(typeofExp(e.rator, tenv), (type: TExp) =>
+        isProcTExp(type) && isPredTExp(type.returnTE) && e.rands.length === 1 && isVarRef(e.rands[0]) ?
+        makeOk(makeExtendTEnv([e.rands[0].var], [type.returnTE.texp], tenv)) :
+        makeFailure("Invalid type predicate application")) :
+    makeFailure("Invalid type predicate application");
 
 export const typeofIf = (ifExp: IfExp, tenv: TEnv): Result<TExp> =>
     either(
-        bind (isTypePredApp(ifExp.test, tenv), ({/* Add parameter here */}) => {}),
+        bind(isTypePredApp(ifExp.test, tenv), (x: TEnv) => typeofIfSpecial(ifExp, tenv, x)),
         makeOk,
         () => typeofIfNormal(ifExp, tenv));
 
@@ -159,7 +181,7 @@ export const typeofProc = (proc: ProcExp, tenv: TEnv): Result<TExp> => {
     const argsTEs = map((vd) => vd.texp, proc.args);
     const extTEnv = makeExtendTEnv(map((vd) => vd.var, proc.args), argsTEs, tenv);
     const constraint1 = bind(typeofExps(proc.body, extTEnv), (body: TExp) => 
-                            checkCompatibleType(body, proc.returnTE, proc));
+                            checkCompatibleType(body, isPredTExp(proc.returnTE) ? makeBoolTExp() : proc.returnTE, proc));
     return bind(constraint1, _ => makeOk(makeProcTExp(argsTEs, proc.returnTE)));
 };
 
@@ -184,7 +206,7 @@ export const typeofApp = (app: AppExp, tenv: TEnv): Result<TExp> =>
         const constraints = zipWithResult((rand, trand) => bind(typeofExp(rand, tenv), (typeOfRand: TExp) => 
                                                                 checkCompatibleType(typeOfRand, trand, app)),
                                           app.rands, ratorTE.paramTEs);
-        return bind(constraints, _ => makeOk(ratorTE.returnTE));
+        return bind(constraints, _ => isPredTExp(ratorTE.returnTE) ? makeOk(makeBoolTExp()) : makeOk(ratorTE.returnTE));
     });
 
 // Purpose: compute the type of a let-exp
